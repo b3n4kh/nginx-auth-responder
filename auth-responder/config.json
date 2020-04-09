@@ -1,0 +1,29 @@
+{
+  "hosts": {
+    "localhost": {
+      "locations": {
+        "/": {
+          "location": "/",
+          "users": ["ben"]
+        },
+        "/auth": {
+          "location": "/auth",
+          "users": ["ben", "franz", "test"]
+        }
+      }
+    },
+    "vhost123": {
+      "locations": {
+        "/": {
+          "location": "/",
+          "users": ["xxx"]
+        },
+        "/deny": {
+          "location": "/deny",
+          "users": ["nobody"]
+        }
+      }
+    }
+  },
+  "admins": ["root"]
+}

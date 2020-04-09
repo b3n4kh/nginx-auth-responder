@@ -1,0 +1,7 @@
+[Unit]
+Description=Nginx Auth Responder
+
+[Service]
+ExecStart=/usr/bin/auth-responder
+User=auth-responder
+Group=nginx

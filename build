@@ -1,0 +1,13 @@
+#!/bin/bash
+
+NAME=auth-responder
+
+specfile=${NAME}.spec
+version=$(grep version ${specfile} | head -1 | awk '{ print $3}')
+release=$(grep release ${specfile} | head -1 | awk '{ print $3}')
+
+rpmdev-setuptree
+
+tar czf $(rpm --eval "%{_sourcedir}")/${NAME}-${version}.${release}.tar.gz ${NAME}/
+
+rpmbuild -ba ${specfile}
