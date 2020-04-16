@@ -16,8 +16,7 @@ import (
 )
 
 type users struct {
-	Users    []string `json:"users"`
-	Location string   `json:"location"`
+	Users []string `json:"users"`
 }
 
 type locations struct {
@@ -111,7 +110,7 @@ func isAuthorized(user string, uri string, host string) bool {
 
 	if locations, ok := configuration.Hosts[host]; ok {
 		for location, users := range locations.Location {
-			if strings.HasPrefix(location, uri) {
+			if strings.HasPrefix(uri, location) {
 				log.Debug("URI matches LocationRule",
 					zap.String("uri", uri),
 					zap.String("locationRule", location))
@@ -125,7 +124,8 @@ func isAuthorized(user string, uri string, host string) bool {
 		}
 	}
 
-	log.Info("user not Authorized", zap.String("user", user))
+	log.Info("user not Authorized",
+		zap.String("user", user))
 	return false
 }
 
