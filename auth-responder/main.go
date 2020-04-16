@@ -2,15 +2,17 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"flag"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"unicode"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type users struct {
@@ -29,7 +31,11 @@ type Config struct {
 }
 
 // Configuration is the globale config from /etc/auth-responder/config.json
-var Configuration Config
+var configuration Config
+
+// Logger is the global logging var
+var log *zap.Logger
+var logcfg zap.Config
 
 func loadConfig(configFile string) (Config, error) {
 	var config Config
@@ -43,7 +49,9 @@ func setupSocket(socketPath string) (listener net.Listener) {
 
 	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		log.Fatalf("Could not listen on %s: %v", socketPath, err)
+		log.Fatal("Could not create socket",
+			zap.String("socket", socketPath),
+			zap.Error(err))
 		return
 	}
 	os.Chmod(socketPath, 0770)
@@ -62,7 +70,7 @@ func httpListener(listener net.Listener) {
 	defer listener.Close()
 	err := http.Serve(listener, nil)
 	if err != nil {
-		log.Fatalf("Could not start HTTP server: %v", err)
+		log.Fatal("Could not start HTTP server", zap.Error(err))
 	}
 }
 
@@ -79,12 +87,11 @@ func sanitizeUser(s string) string {
 }
 
 func isAdmin(user string) bool {
-	for _, admin := range Configuration.Admins {
+	for _, admin := range configuration.Admins {
 		if user == admin {
 			return true
 		}
 	}
-	//log.Printf("user: %s is not an Admin\n", user)
 	return false
 }
 
@@ -102,19 +109,23 @@ func isAuthorized(user string, uri string, host string) bool {
 		return true
 	}
 
-	if locations, ok := Configuration.Hosts[host]; ok {
+	if locations, ok := configuration.Hosts[host]; ok {
 		for location, users := range locations.Location {
 			if strings.HasPrefix(location, uri) {
-				fmt.Printf("%s is prefix of %s\n", uri, location)
+				log.Debug("URI matches LocationRule",
+					zap.String("uri", uri),
+					zap.String("locationRule", location))
 				if stringInSlice(user, users.Users) {
-					fmt.Println("users: ", users.Users)
+					log.Debug("Authenticating user",
+						zap.String("user", user),
+						zap.Strings("allowedUsers", users.Users))
 					return true
 				}
 			}
 		}
 	}
 
-	log.Printf("user: %s not Authorized\n", user)
+	log.Info("user not Authorized", zap.String("user", user))
 	return false
 }
 
@@ -123,11 +134,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	uri := r.Header.Get("X-URI")
 	host := r.Header.Get("X-Host")
 
-	fmt.Printf("host: %s uri: %s user: %s\n", host, uri, user)
+	log.Debug("Handling Request",
+		zap.String("host", host),
+		zap.String("uri", uri),
+		zap.String("user", user))
 
 	if user == "" || uri == "" || host == "" {
 		w.WriteHeader(401)
-		log.Printf("REMOTE-USER, X-Forwarded-Proto, X-URI or X-Host Header not set")
+		log.Error("REMOTE-USER, X-Forwarded-Proto, X-URI or X-Host Header not set")
 		return
 	}
 
@@ -140,18 +154,39 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	file := "/run/auth-responder/socket"
-	confFile := "/etc/auth-responder/config.json"
-	var err error
+	var (
+		socketFile string
+		confFile   string
+		debug      bool
+		err        error
+	)
 
-	Configuration, err = loadConfig(confFile)
+	flag.StringVar(&socketFile, "socket", "/run/auth-responder/socket", "The TCP Socket to open")
+	flag.StringVar(&confFile, "config", "/etc/auth-responder/config.json", "The config File to read in")
+	flag.BoolVar(&debug, "debug", false, "Run in Debug mode")
+	flag.Parse()
+
+	if !debug {
+		logcfg = zap.NewProductionConfig()
+	} else {
+		logcfg = zap.NewDevelopmentConfig()
+		logcfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	}
+	logger, _ := logcfg.Build()
+	defer logger.Sync()
+
+	log = logger
+
+	configuration, err = loadConfig(confFile)
 	if err != nil {
-		log.Fatalf("Could not read config %s: %v", confFile, err)
+		log.Fatal("Could not read config",
+			zap.String("file", confFile),
+			zap.Error(err))
 		return
 	}
 
-	listener := setupSocket(file)
+	listener := setupSocket(socketFile)
 	http.HandleFunc("/", handler)
-	log.Printf("Start Listening on: %s", file)
+	log.Info("Started Listening", zap.String("socket", socketFile))
 	httpListener(listener)
 }
