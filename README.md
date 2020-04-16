@@ -31,7 +31,8 @@ There is a configuration File that has to be in json Format with the following s
       }
     },
   },
-  "admins": ["root"]
+  "admins": ["<admin_user>"]
 }
 ```
 
+See [config.json](https://github.com/b3n4kh/nginx-auth-responder/blob/master/auth-responder/config.json) for an example configuration.
