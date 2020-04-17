@@ -82,16 +82,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		zap.String("uri", uri),
 		zap.String("user", user))
 
-	if user == "" || uri == "" || host == "" {
+	if uri == "" || host == "" {
 		w.WriteHeader(401)
-		log.Error("REMOTE-USER, X-Forwarded-Proto, X-URI or X-Host Header not set")
+		log.Error("X-URI or X-Host Header not set")
 		return
 	}
 
-	if cert != "" {
+	if user == "" {
+		if cert == "" {
+			w.WriteHeader(401)
+			log.Error("Neither REMOTE-USER nor X-Cert Header are set")
+			return
+		}
 		certuser := getUserFromCert(cert)
 		if certuser != "" {
 			log.Info("Got User out of cert", zap.String("user", certuser))
+			user = certuser
 		}
 	}
 

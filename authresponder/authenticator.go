@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/x509"
 	"encoding/pem"
+	"net/url"
 	"strings"
 	"unicode"
 
@@ -40,9 +41,14 @@ func stringInSlice(a string, list []string) bool {
 }
 
 func getUserFromCert(cert string) string {
+	pemcert, err := url.QueryUnescape(cert)
+	if err == nil {
+		cert = pemcert
+	}
+
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		log.Warn("failed to parse PEM block containing the public key")
+		log.Warn("failed to parse PEM block containing the certificate")
 		return ""
 	}
 	pub, err := x509.ParseCertificate(block.Bytes)
