@@ -3,7 +3,7 @@
 This service answers to nginx [auth_request](http://nginx.org/en/docs/http/ngx_http_auth_request_module.html) requests.
 
 Requests to this service must set three http Headers:
- * "REMOTE-USER"
+ * "REMOTE-USER" or "X-Cert"
  * "X-URI"
  * "X-Host"
 
@@ -20,7 +20,7 @@ Where <location> has to be a [prefix](https://golang.org/pkg/strings/#HasPrefix)
 If "REMOTE_USER" is a user in the <admins> section he will get access to any location.
 There is a configuration File that has to be in json Format with the following structure:
 
-
+If X-Cert is set the Common name from the zertificate will be extracted.
 
 ```json
 {
