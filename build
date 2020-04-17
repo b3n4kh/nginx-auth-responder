@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NAME=auth-responder
+NAME=authresponder
 
 specfile=${NAME}.spec
 version=$(grep version ${specfile} | head -1 | awk '{ print $3}')

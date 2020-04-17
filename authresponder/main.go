@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
-	"unicode"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -73,66 +71,11 @@ func httpListener(listener net.Listener) {
 	}
 }
 
-func sanitizeUser(s string) string {
-	return strings.Map(
-		func(r rune) rune {
-			if unicode.IsLetter(r) || unicode.IsDigit(r) {
-				return r
-			}
-			return -1
-		},
-		s,
-	)
-}
-
-func isAdmin(user string) bool {
-	for _, admin := range configuration.Admins {
-		if user == admin {
-			return true
-		}
-	}
-	return false
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
-func isAuthorized(user string, uri string, host string) bool {
-	if isAdmin(user) {
-		return true
-	}
-
-	if locations, ok := configuration.Hosts[host]; ok {
-		for location, users := range locations.Location {
-			if strings.HasPrefix(uri, location) {
-				log.Debug("URI matches LocationRule",
-					zap.String("uri", uri),
-					zap.String("locationRule", location))
-				if stringInSlice(user, users.Users) {
-					log.Debug("Authenticating user",
-						zap.String("user", user),
-						zap.Strings("allowedUsers", users.Users))
-					return true
-				}
-			}
-		}
-	}
-
-	log.Info("user not Authorized",
-		zap.String("user", user))
-	return false
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get("REMOTE-USER")
 	uri := r.Header.Get("X-URI")
 	host := r.Header.Get("X-Host")
+	cert := r.Header.Get("X-Cert")
 
 	log.Debug("Handling Request",
 		zap.String("host", host),
@@ -143,6 +86,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(401)
 		log.Error("REMOTE-USER, X-Forwarded-Proto, X-URI or X-Host Header not set")
 		return
+	}
+
+	if cert != "" {
+		certuser := getUserFromCert(cert)
+		if certuser != "" {
+			log.Info("Got User out of cert", zap.String("user", certuser))
+		}
 	}
 
 	if isAuthorized(user, uri, host) {

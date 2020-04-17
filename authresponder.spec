@@ -1,6 +1,6 @@
 %define version 1
 %define release 2
-%define name auth-responder
+%define name authresponder
 %define debug_package %{nil}
 %define _build_id_links none
 
