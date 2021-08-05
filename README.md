@@ -37,4 +37,4 @@ If X-Cert is set the Common name from the zertificate will be extracted.
 }
 ```
 
-See [config.json](https://github.com/b3n4kh/nginx-auth-responder/blob/master/auth-responder/config.json) for an example configuration.
+See [config.json](https://github.com/b3n4kh/nginx-auth-responder/blob/master/authresponder/config.json) for an example configuration.
